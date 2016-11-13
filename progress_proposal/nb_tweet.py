@@ -72,10 +72,7 @@ if __name__ == '__main__':
     print(nb.classify(test,7))
 
     # Plot
-    accuracies = []
-    psuedocounts = []
-    for i in range(1,50):
-        psuedocounts.append(i)
-        accuracies.append(nb.eval(i))
+    psuedocounts = range(1,50)
+    accuracies = map(lambda x: nb.eval(x),psuedocounts)
     plot_psuedocount_vs_accuracy(psuedocounts, accuracies)
  
