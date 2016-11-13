@@ -69,7 +69,8 @@ if __name__ == '__main__':
     nb.train(TRAIN_DIR,TRAIN_FILE)
 
     test = "i love hillary clinton"
-    print(nb.classify(test,7))
+    print(nb.classify(test,36))
+    print(nb.eval(36))
 
     # Plot
     psuedocounts = range(1,50)
