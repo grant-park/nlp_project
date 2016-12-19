@@ -30,7 +30,7 @@ class NB_Baseline:
                 self.total_doc_count += 1
                 self.doc_count_dict[target] += 1
                 self.token_count_dict[target] += len(tweet_content)
-                for each in tweet_content:
+                for each in set(tweet_content):
                     if each not in self.doc_token_count_dict[target]:
                         self.doc_token_count_dict[target][each] = 0
                     self.doc_token_count_dict[target][each] += 1
@@ -57,7 +57,7 @@ class NB_Baseline:
             attr = next(iterdoc).split() # differentiate first line
             for index,line in enumerate(iterdoc):
                 entry = line.split("\t")
-                if entry[1] == self.classify(entry[2].lower(), alpha):
+                if entry[1] == self.classify(entry[2].lower().split(), alpha):
                     accuracy += 1
                 total += 1
         return accuracy/total
@@ -73,6 +73,8 @@ def plot_psuedocount_vs_accuracy(psuedocounts, accuracies):
 if __name__ == '__main__':
     limit = range(50,2501,50)
     accuracies = []
+    nb = NB_Baseline()
+    nb.train(TRAIN_DIR,TRAIN_FILE)
     for i in limit:
         nb = NB_Baseline()
         nb.train(TRAIN_DIR,TRAIN_FILE,i)
@@ -83,8 +85,10 @@ if __name__ == '__main__':
     plt.ylabel('Accuracy (%)')
     plt.title('Limit Parameter vs. Accuracy Experiment')
     plt.show()
-    # Plot
-    # psuedocounts = range(1,50)
-    # accuracies = map(lambda x: nb.eval(x),psuedocounts)
-    # plot_psuedocount_vs_accuracy(psuedocounts, accuracies)
- 
+
+
+   # psuedocounts = range(1,50)
+   # accuracies = map(lambda x: nb.eval(x),psuedocounts)
+   # plot_psuedocount_vs_accuracy(psuedocounts, accuracies)
+
+    print nb.eval(1) 
