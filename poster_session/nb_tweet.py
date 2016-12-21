@@ -70,6 +70,14 @@ def plot_psuedocount_vs_accuracy(psuedocounts, accuracies):
     plt.title('Psuedocount Parameter vs. Accuracy Experiment')
     plt.show()
 
+def limit_accuracy(sizes):
+    accuracies = []
+    for i in sizes:
+        nb = NB_Baseline()
+        nb.train(TRAIN_DIR,TRAIN_FILE,i)
+        accuracies.append(nb.eval(1))
+    return accuracies
+
 if __name__ == '__main__':
     limit = range(50,2501,50)
     accuracies = []
@@ -78,7 +86,7 @@ if __name__ == '__main__':
     for i in limit:
         nb = NB_Baseline()
         nb.train(TRAIN_DIR,TRAIN_FILE,i)
-        accuracies.append(nb.eval(36))
+        accuracies.append(nb.eval(1))
     import matplotlib.pyplot as plt
     plt.plot(limit, accuracies)
     plt.xlabel('Limit Parameter')
