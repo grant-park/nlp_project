@@ -21,7 +21,7 @@ rects3 = ax.bar(ind + width, lr_accs, width, color='blue', align='center')
 
 # add some text for labels, title and axes ticks
 ax.set_ylabel('Accuracy')
-ax.set_title('Size of Training Sample Set')
+ax.set_xlabel('Size of Training Sample Set')
 ax.set_xticks(ind)
 ax.set_xticklabels(sizes)
 
