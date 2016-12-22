@@ -59,9 +59,8 @@ class LogReg:
 				else:
 					self.stance_counts[target][stance] = 1
 				# aggregate data
-				if stance!='NONE':
-					self.data.append([self.target_dict[target], curr_tweet_token_count, self.stance_dict[stance]])
-					self.total_count += 1
+				self.data.append([self.target_dict[target], curr_tweet_token_count, self.stance_dict[stance]])
+				self.total_count += 1
 
 		print 'Data read.'
 		print 'There are %s valid data points' % self.total_count
@@ -108,26 +107,70 @@ class LogReg:
 		return self.stances[self.logreg.predict(curr_features)]
 
 	def eval(self, target, test_file):
-		correct = 0
-		incorrect = 0
+		for_tp = 0
+		for_fp = 0 
+		for_fn = 0
+		for_tn = 0
+		against_tp = 0
+		against_fp = 0
+		against_fn = 0
+		against_tn = 0
 		with open(test_file, 'r') as f:
 			for line in f.read().splitlines()[1:]:
 				fields = line.split('\t')
 				assert fields[1] in self.targets
 				assert fields[3] in self.stances
 				if fields[1]==target:
-					pred_correct = self.predict(fields[2]) == fields[3]
-					if pred_correct:
-						correct += 1
-					else:
-						incorrect += 1
-		return correct/float(incorrect+correct)
+					correct_label = fields[3]
+					pred_label = self.predict(fields[2])
+					if correct_label=='FAVOR' and pred_label=='FAVOR':
+						for_tp += 1
+					if correct_label=='FAVOR' and pred_label!='FAVOR':
+						for_fn += 1
+					if correct_label!='FAVOR' and pred_label=='FAVOR':
+						for_fp += 1
+					if correct_label!='FAVOR' and pred_label!='FAVOR':
+						for_tn += 1
+					if correct_label=='AGAINST' and pred_label=='AGAINST':
+						against_tp += 1
+					if correct_label=='AGAINST' and pred_label!='AGAINST':
+						against_fn += 1
+					if correct_label!='AGAINST' and pred_label=='AGAINST':
+						against_fp += 1
+					if correct_label!='AGAINST' and pred_label!='AGAINST':
+						against_tn += 1
+		if for_tp+for_fp != 0:
+			for_precision = for_tp/float(for_tp+for_fp)
+		else:
+			for_precision = 0
+		if for_tp+for_fn != 0:
+			for_recall = for_tp/float(for_tp+for_fn)
+		else:
+			for_recall = 1
+		if against_tp+against_fp != 0:
+			against_precision = against_tp/float(against_tp+against_fp)
+		else:
+			against_precision = 0
+		if against_tp+against_fn != 0:
+			against_recall = against_tp/float(against_tp+against_fn)
+		else:
+			against_recall = 1
+		if for_precision+for_recall!=0:
+			f_for = 2*for_precision*for_recall/float(for_precision+for_recall)
+		else:
+			f_for = 0
+		if against_precision+against_recall!=0:
+			f_against = 2*against_precision*against_recall/float(against_precision+against_recall)
+		else:
+			f_against = 0
+		return (f_for+f_against)/2.0
 
 
 
 
 
 if __name__ == '__main__':
+	# train on all targets and test
 	lr = LogReg()
 	lr.prep_data(os.path.join(TRAIN_DIR, TRAIN_FILE))
 	accuracies =  []
@@ -140,3 +183,17 @@ if __name__ == '__main__':
 	plt.xticks([0,1,2,3,4], lr.targets)
 	plt.plot([0,1,2,3,4], accuracies)
 	plt.show()
+
+	# train on one target and test on the rest
+	"""lr = LogReg()
+	lr.prep_data(os.path.join(TRAIN_DIR, TRAIN_FILE))
+	accuracies =  []
+	lr.train(lr.targets[3], 1)
+	for target in lr.targets:
+		accuracies.append(lr.eval(target, os.path.join(TEST_DIR, TEST_FILE)))
+	print accuracies
+	plt.xlabel('Target')
+	plt.ylabel('Accuracy')
+	plt.xticks([0,1,2,3,4], lr.targets)
+	plt.plot([0,1,2,3,4], accuracies)
+	plt.show()"""

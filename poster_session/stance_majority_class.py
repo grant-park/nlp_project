@@ -9,7 +9,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 PATH_TO_DATA = 'twitter_dataset'
-TRAIN_DIR, TRAIN_FILE = os.path.join(PATH_TO_DATA, 'train'), "shuffled.txt"
+TRAIN_DIR, TRAIN_FILE = os.path.join(PATH_TO_DATA, 'train'), "trainingdata-all-annotations.txt"
 TEST_DIR, TEST_FILE = os.path.join(PATH_TO_DATA, 'test'), "testdata-taskA-all-annotations.txt"
 
 def tokenize(text):
@@ -24,21 +24,21 @@ class LogReg:
 	def __init__(self):
 		self.targets = ['Atheism', 'Legalization of Abortion', 'Feminist Movement', 'Climate Change is a Real Concern', 'Hillary Clinton']
 		self.target_counts = defaultdict(int)
+		self.target_dict = {'Atheism':0, 'Legalization of Abortion':1, 'Feminist Movement':2,
+						'Climate Change is a Real Concern':3, 'Hillary Clinton':4}
 		self.total_count = 0
 		self.token_count = defaultdict(int)
 		self.stance_counts = defaultdict(dict)
 		self.stances = ['AGAINST', 'FAVOR', 'NONE']
+		self.stance_dict = {'AGAINST': 0, 'FAVOR': 1, 'NONE': 2}
 
-	def prep_data(self, train_file, limit=None):
-		data = []
-		self.conv_dict = {'Atheism':0, 'Legalization of Abortion':1, 'Feminist Movement':2,
-						'Climate Change is a Real Concern':3, 'Hillary Clinton':4}
+	def prep_data(self, train_file):
+		self.data = []
+		
 
 		# read data
 		with open(train_file, 'r') as f:
-			for index,line in enumerate(f.read().splitlines()[1:]):
-                                if limit and index == limit:
-                                    break
+			for line in f.read().splitlines()[1:]:
 				fields = line.split('\t')
 				# get tokens
 				tweet = fields[2]
@@ -49,7 +49,7 @@ class LogReg:
 					curr_tweet_token_count[token] += 1
 				# get and validate target
 				target = fields[1]
-				assert target in self.conv_dict.keys()
+				assert target in self.targets
 				self.target_counts[target] += 1
 				# get and validate stance and increment stance counts
 				stance = fields[3]
@@ -60,7 +60,7 @@ class LogReg:
 					self.stance_counts[target][stance] = 1
 				# aggregate data
 				if stance!='NONE':
-					data.append([self.conv_dict[fields[1]], curr_tweet_token_count, stance])
+					self.data.append([self.target_dict[target], curr_tweet_token_count, self.stance_dict[stance]])
 					self.total_count += 1
 
 		print 'Data read.'
@@ -70,71 +70,47 @@ class LogReg:
 			print 'For target %s there are %s data points' % (target, self.target_counts[target])
 			for stance in self.stances:
 				print '\t For stance %s there are %s data points' % (stance, self.stance_counts[target][stance])
+		
 
-		# generate features
-		self.labels = []
-		self.training_data = []
-		for item in data:
-			self.labels.append(item[0])
-			curr_features = []
-			for token, count in self.token_count.iteritems():
-				curr_features.append(item[1][token])
-			self.training_data.append(curr_features)
-		self.training_data = np.array(self.training_data)
-		self.labels = np.array(self.labels)
+	def predict(self, target, tweet):
+		max_stance_count = 0
+		max_stance = ''
+		for stance in self.stances:
+			if self.stance_counts[target][stance] > max_stance_count:
+				max_stance_count = self.stance_counts[target][stance]
+				max_stance = stance
+		return max_stance
 
-		print 'Features generated.'
-		print 'Training data has dimension %s times %s' % (self.training_data.shape[0], self.training_data.shape[1])
-		print 'Data preparations ready.'
-
-	def train(self, c=1e5):
-		self.logreg = linear_model.LogisticRegression(C=c)
-		self.logreg.fit(self.training_data, self.labels)
-
-	def predict(self, tweet):
-		curr_tweet_token_count = defaultdict(int)
-		curr_features = []
-		for token in tokenize(tweet):
-			curr_tweet_token_count[token] += 1
-		for token, count in self.token_count.iteritems():
-			curr_features.append(curr_tweet_token_count[token])
-		return self.targets[self.logreg.predict(curr_features)]
-
-	def eval(self, test_file):
+	def eval(self, target, test_file):
 		correct = 0
 		incorrect = 0
 		with open(test_file, 'r') as f:
 			for line in f.read().splitlines()[1:]:
 				fields = line.split('\t')
-				assert fields[1] in self.conv_dict.keys()
+				assert fields[1] in self.targets
 				assert fields[3] in self.stances
-				if fields[3]!='NONE':
-					pred_correct = self.predict(fields[2]) == fields[1]
+				if fields[1]==target:
+					pred_correct = self.predict(target, fields[2]) == fields[3]
 					if pred_correct:
 						correct += 1
 					else:
 						incorrect += 1
 		return correct/float(incorrect+correct)
 
-def limit_accuracy(sizes):
-    accuracies = []
-    for i in sizes:
-        lr = LogReg()
-        lr.prep_data(os.path.join(TRAIN_DIR, TRAIN_FILE),i)
-        lr.train(10)
-        accuracies.append(lr.eval(os.path.join(TEST_DIR, TEST_FILE)))
-    return accuracies
+
+
+
 
 if __name__ == '__main__':
+	# train on all targets and test
 	lr = LogReg()
 	lr.prep_data(os.path.join(TRAIN_DIR, TRAIN_FILE))
 	accuracies =  []
-	for c in [0.01, 0.1, 0.5, 1, 10, 1e2, 1e3]:
-		lr.train(c)
-		accuracies.append(lr.eval(os.path.join(TEST_DIR, TEST_FILE)))
+	for target in lr.targets:
+		accuracies.append(lr.eval(target, os.path.join(TEST_DIR, TEST_FILE)))
 	print accuracies
-	plt.xlabel('Inverse of regularization strength')
+	plt.xlabel('Target')
 	plt.ylabel('Accuracy')
-	plt.xticks([0,1,2,3,4,5,6], ['0.01', '0.1', '0.5', '1', '10', '1e2', '1e3'])
-	plt.plot([0,1,2,3,4,5,6], accuracies)
+	plt.xticks([0,1,2,3,4], lr.targets)
+	plt.plot([0,1,2,3,4], accuracies)
 	plt.show()
