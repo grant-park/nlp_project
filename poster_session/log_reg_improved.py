@@ -9,7 +9,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 PATH_TO_DATA = 'twitter_dataset'
-TRAIN_DIR, TRAIN_FILE = os.path.join(PATH_TO_DATA, 'train'), "trainingdata-all-annotations.txt"
+TRAIN_DIR, TRAIN_FILE = os.path.join(PATH_TO_DATA, 'train'), "shuffled.txt"
 TEST_DIR, TEST_FILE = os.path.join(PATH_TO_DATA, 'test'), "testdata-taskA-all-annotations.txt"
 
 def tokenize(text):
@@ -29,14 +29,16 @@ class LogReg:
 		self.stance_counts = defaultdict(dict)
 		self.stances = ['AGAINST', 'FAVOR', 'NONE']
 
-	def prep_data(self, train_file):
+	def prep_data(self, train_file, limit=None):
 		data = []
 		self.conv_dict = {'Atheism':0, 'Legalization of Abortion':1, 'Feminist Movement':2,
 						'Climate Change is a Real Concern':3, 'Hillary Clinton':4}
 
 		# read data
 		with open(train_file, 'r') as f:
-			for line in f.read().splitlines()[1:]:
+			for index,line in enumerate(f.read().splitlines()[1:]):
+                                if limit and index == limit:
+                                    break
 				fields = line.split('\t')
 				# get tokens
 				tweet = fields[2]
@@ -114,9 +116,14 @@ class LogReg:
 						incorrect += 1
 		return correct/float(incorrect+correct)
 
-
-
-
+def limit_accuracy(sizes):
+    accuracies = []
+    for i in sizes:
+        lr = LogReg()
+        lr.prep_data(os.path.join(TRAIN_DIR, TRAIN_FILE),i)
+        lr.train(10)
+        accuracies.append(lr.eval(os.path.join(TEST_DIR, TEST_FILE)))
+    return accuracies
 
 if __name__ == '__main__':
 	lr = LogReg()
